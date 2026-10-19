@@ -29,7 +29,7 @@ description: >-
 
 | 工作区类型 | AGENTS.md 专属节 | 必建文件 |
 |---|---|---|
-| 开发 `dev` | 技术栈 / 常用命令 / 项目结构 | AGENTS.md、docs/PROGRESS.md、docs/KNOWN-ISSUES.md、docs/DECISIONS.md |
+| 开发 `dev` | 定位与边界 / 技术栈 / 常用命令 / 项目结构 | AGENTS.md、docs/PROGRESS.md、docs/KNOWN-ISSUES.md、docs/DECISIONS.md |
 | 运维 `ops` | 管理对象 / 环境与访问 / 危险操作红线 / 常用操作 | 同上 + docs/RUNBOOK.md |
 | 知识 `knowledge` | 学习范围 / 知识约定 / 当前关注 | 同上 + docs/NOTES.md |
 
@@ -54,8 +54,9 @@ description: >-
 ### 第 1 步：侦察（只读，不写文件）
 
 1. 确认会话工作目录 `pwd`；若在子目录，向上找 `.git`，没有 `.git` 就把当前目录当工作区根目录。
-2. 检查已存在的记忆文件：`AGENTS.md`、`CLAUDE.md`、`docs/PROGRESS.md`、`docs/KNOWN-ISSUES.md`、`docs/DECISIONS.md`、`docs/RUNBOOK.md`、`docs/NOTES.md`。
-3. 收集类型信号（见下表）。用 `read` 读 README、manifest、已有文档；**不要执行项目命令，不要安装依赖**。
+2. **先检查 opt-out 标记**：根目录存在 `.dsh/no-project-memory`，或 `AGENTS.md` 顶部有 `> 记忆: 关闭` → 该工作区被标记为临时/不共享记忆，**停止，不生成任何文件**，只向用户确认「该工作区已标记为不初始化记忆」。
+3. 检查已存在的记忆文件：`AGENTS.md`、`AGENTS.local.md`、`CLAUDE.md`、`docs/PROGRESS.md`、`docs/KNOWN-ISSUES.md`、`docs/DECISIONS.md`、`docs/RUNBOOK.md`、`docs/NOTES.md`。
+4. 收集类型信号（见下表）。用 `read` 读 README、manifest、已有文档；**不要执行项目命令，不要安装依赖**。
 
 | 类型 | 强信号 | 弱信号 |
 |---|---|---|
@@ -72,10 +73,11 @@ description: >-
 
 - **项目名**：manifest 的 `name`，否则目录 basename；去掉版本号后缀。
 - **一句话说明**：用户消息 > README 第一段 > `（待补充：一句话说明）`。
-- **dev**：技术栈（依赖/运行环境）、安装/开发/测试/构建命令（`package.json` scripts、Makefile、pyproject、README 命令段）、顶层目录职责。
-- **ops**：管理对象（主机/服务/域名）、环境（生产/测试）、访问入口与凭据存放位置（**只写位置**）、变更窗口、常用操作、备份与回滚方式。
-- **knowledge**：学习范围、当前关注主题、已有资料入口。
-- **工作约定**：最多写 1～3 条能从仓库或用户消息确认的硬规矩；没有就写 `（待补充：代码风格 / 提交规范 / 必跑命令）`。
+- **定位与边界（dev）**：是什么/给谁、不做什么；从 README/用户消息提取，推不出就 `（待补充）`，不要写仓库概览。
+- **dev**：技术栈（只写不可从 manifest 直接看出的约束）、安装/开发/测试/构建命令（`package.json` scripts、Makefile、pyproject、README 命令段）、顶层目录职责（只写非显而易见的归属/放置规则，不列完整目录树）。
+- **ops**：管理对象（主机/服务/域名）、不管理/非目标、环境（生产/测试）、访问入口与凭据存放位置（**只写位置**）、变更窗口、常用操作、备份与回滚方式。
+- **knowledge**：学习范围、非目标、当前关注主题、已有资料入口。
+- **工作约定**：最多写 1～3 条能从仓库或用户消息确认、且工具无法强制的硬规矩；没有就写 `（待补充：代码风格 / 提交规范 / 必跑命令）`。
 
 ### 第 3 步：生成文件
 
@@ -85,8 +87,9 @@ description: >-
 2. **docs/PROGRESS.md**：初始「当前状态」=「刚初始化记忆体系，尚未开始实质工作。」；「已完成」保留初始化条目；「下一步」写一个具体的 `- [ ] （待补充：第一个具体任务）`。
 3. **docs/KNOWN-ISSUES.md**、**docs/DECISIONS.md**：按模板；DECISIONS 保留「初始化文件记忆体系」条目。
 4. **按类型追加**：`ops` → `docs/RUNBOOK.md`；`knowledge` → `docs/NOTES.md`；`dev` + 部署信号 → `docs/RUNBOOK.md`。
-5. 替换所有 `{{...}}` 模板标记：`{{PROFILE_LABEL}}` 填 开发/运维/知识；`{{EXTRA_DECISION}}` 按类型填 `、RUNBOOK.md` / `、NOTES.md` / 空；`{{FILE_LIST}}` 填实际生成的文件；`{{DATETIME}}` 填当前时间。未知值写 `（待补充：…）`，**禁止**编造命令、地址、版本号。
+5. 替换所有 `{{...}}` 模板标记：`{{SPEC_VERSION}}` 填 `2.1`；`{{PROFILE_LABEL}}` 填 开发/运维/知识；`{{WHAT_WHO}}`/`{{NON_GOALS}}` 填定位/非目标；`{{EXTRA_DECISION}}` 按类型填 `、RUNBOOK.md` / `、NOTES.md` / 空；`{{FILE_LIST}}` 填实际生成的文件；`{{DATETIME}}` 填当前时间。未知值写 `（待补充：…）`，**禁止**编造命令、地址、版本号。
 6. 写完立即 `read` 一遍 AGENTS.md 与 PROGRESS.md，刷新当前会话的指令快照。
+7. **可选**：用户明确说「配置本机 / 本机私有」时，才用 `templates/AGENTS.local.template.md` 生成 `AGENTS.local.md`（≤20 行，不写密钥），并提醒加入 `.gitignore`；默认不生成。
 
 ### 第 4 步：自检（必须）
 
@@ -95,7 +98,7 @@ node "<本技能目录>/scripts/verify-memory.mjs" "<工作区根目录>"
 ```
 
 - 先修完全部 `ERROR`（模板标记残留、缺节、保护节被改写、疑似密钥、缺文件）。
-- `WARN`（`（待补充）`、文件超预算）逐条列进汇报，不要假装没有。
+- `WARN`（`（待补充）`、文件超预算、本机私有文件未 gitignore、缺版本行）逐条列进汇报，不要假装没有。
 - 若脚本报类型不符，可加 `--profile=dev|ops|knowledge` 重跑。
 
 ### 第 5 步：汇报
@@ -104,22 +107,26 @@ node "<本技能目录>/scripts/verify-memory.mjs" "<工作区根目录>"
 
 1. 说明类型与判定依据（一句话）。
 2. 列出所有 `（待补充：…）`，告诉用户最少要补哪几项。
-3. 建议下一步：`git init` + commit（是否执行先问用户），然后开工。
-4. 提醒：以后每次收尾更新 PROGRESS.md；踩坑记 KNOWN-ISSUES；定案记 DECISIONS。
+3. **明确说明：技能只生成了骨架，AGENTS.md 需要人工审阅/定稿**；不要声称「已自动写好」。
+4. 建议下一步：`git init` + commit（是否执行先问用户），然后开工。
+5. 提醒：以后每次收尾更新 PROGRESS.md；踩坑记 KNOWN-ISSUES；定案记 DECISIONS；按任务形状读对应文件（见 SPEC §9.10）。
 
 ## 硬性边界
 
 - **不覆盖**：已存在的 AGENTS.md、docs 文件不覆盖；只补缺。需要重建时先问用户并说明会丢失什么。
 - **不改保护节**：含「（必须保留本节原文）」的两节必须逐字保留，不增删改。
-- **不写秘密**：任何密钥/令牌/密码/账号都不入库，只写「去哪找」。
+- **不写秘密**：任何密钥/令牌/密码/账号都不入库，只写「去哪找」；本机私有文件也一样。
 - **不编造**：命令、地址、依赖版本、运维对象必须来自文件或用户；不确定就标 `（待补充）`。
 - **不执行**：不运行项目命令、不装依赖、不 `git commit`（除非用户明确要求）。
-- **不越界**：只写上面矩阵里的文件；不顺手生成 README、CI、代码骨架。
+- **不越界**：只写上面矩阵里的文件；不顺手生成 README、CI、代码骨架；不生成 `CLAUDE.md`/`GEMINI.md` 副本。
+- **不替人定稿**：自动生成只是骨架；不把风格/linter 规则写进 AGENTS.md，不假装完成人工审阅。
 - **一轮提问**：最多问一轮、最多 3 个问题；能从上下文推断的不问。
 
 ## 跨机器说明
 
-本技能是纯 Markdown + Node 脚本，无依赖。新电脑上把整个技能目录放到
-`~/.dsh/skills/project-memory-init/`（或 `~/.agents/skills/`）即可；也可以用
-`node scripts/install.mjs`。装好后新开一个会话，说「初始化项目」就会触发。
-若技能不存在，用同目录的 `BOOTSTRAP-PROMPT.md` 作为一次性提示词。
+本技能是纯 Markdown + Node 脚本，无依赖，Windows/Linux/macOS 通用。两种安装方式：
+
+1. **纯技能**：把整个目录放到 `~/.dsh/skills/project-memory-init/`（或 `~/.agents/skills/`），或运行 `node scripts/install.mjs`。
+2. **bundle 插件（推荐一键）**：在 DSH 的「添加插件」里粘贴 Git 仓库地址（如 `https://github.com/<user>/<repo>`），安装后重启/新会话即可；插件会把内置技能注册到全局。
+
+装好后新开一个会话，说「初始化项目」就会触发；也可输入 `/project-memory-init`。若技能不存在，用同目录的 `BOOTSTRAP-PROMPT.md` 作为一次性提示词。

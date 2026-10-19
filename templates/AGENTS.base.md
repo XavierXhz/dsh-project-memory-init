@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}
 
-> 类型: {{PROFILE_LABEL}} · 建立: {{DATE}} · 最后核对: {{DATE}}
+> 类型: {{PROFILE_LABEL}} · 规范: project-memory-init/{{SPEC_VERSION}} · 建立: {{DATE}} · 最后核对: {{DATE}}
 > {{ONE_LINE_DESC}}
 
 {{PROFILE_SECTIONS}}
@@ -8,6 +8,7 @@
 ## 工作约定
 - {{CONVENTION}}
 - 只写对该工作区任何会话都恒真、且不能从代码或文档直接推导的内容
+- 能交给 linter / formatter / CI 的规则不写进本文件，改由工具强制执行
 
 ## 边界与红线
 - 禁止把密钥/令牌/密码/账号写入任何记忆文件；只写「去哪找」（如 .env、密码管理器条目名）
@@ -23,7 +24,8 @@
 {{TRIGGER_SECTION}}
 
 ## 记忆文件
-- 进度 → docs/PROGRESS.md（每次收尾必写）
-- 已知坑 → docs/KNOWN-ISSUES.md（踩坑即记，含现象/原因/规避）
-- 决策 → docs/DECISIONS.md（定案即记，含背景/决策/备选/原因）
+- 进度 → docs/PROGRESS.md（开工必读；每次收尾必写）
+- 已知坑 → docs/KNOWN-ISSUES.md（排障/踩坑时读；踩坑即记，含现象/原因/规避）
+- 决策 → docs/DECISIONS.md（做方案取舍时读；定案即记，含背景/决策/备选/原因）
 {{EXTRA_POINTERS}}
+- 本机私有 → AGENTS.local.md / docs/local/（不提交；只写本机差异，不写密钥）

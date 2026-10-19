@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(TEST_DIR, '..');
@@ -19,6 +20,18 @@ const INSTALL = join(ROOT, 'scripts', 'install.mjs');
 let passed = 0;
 let failed = 0;
 const failures = [];
+
+async function checkAsync(name, fn) {
+  try {
+    await fn();
+    passed += 1;
+    process.stdout.write(`  ✓ ${name}\n`);
+  } catch (error) {
+    failed += 1;
+    failures.push({ name, error });
+    process.stdout.write(`  ✗ ${name}\n    ${String(error.message ?? error).split('\n')[0]}\n`);
+  }
+}
 
 function check(name, fn) {
   try {
@@ -57,9 +70,12 @@ function assemble(profile, dir, facts = {}) {
   const baseFacts = {
     PROJECT_NAME: 'demo-project',
     PROFILE_LABEL: PROFILE_LABEL[profile],
+    SPEC_VERSION: '2.1',
     DATE: date,
     DATETIME: `${date} 10:00`,
     ONE_LINE_DESC: '用于自测的示例工作区。',
+    WHAT_WHO: '给自测用的示例工具，面向开发者。',
+    NON_GOALS: '不追求性能与生产可用性。',
     CONVENTION: '提交前跑测试；测试不过不提交',
     STACK: 'Node.js 22 / 无外部依赖',
     CMD_INSTALL: 'npm install',
@@ -68,11 +84,13 @@ function assemble(profile, dir, facts = {}) {
     CMD_BUILD: 'npm run build',
     STRUCTURE: '- src/    源码\n- docs/   文档',
     TARGETS: '- demo-host — 演示服务 — 入口: ssh demo',
+    NON_GOALS: '不管理数据库实例。',
     ENVIRONMENTS: '测试环境（自测）',
     ACCESS_POINTER: '凭据见密码管理器条目 demo',
     CHANGE_WINDOW: '任意时间（自测）',
     OPS_ROUTINES: '- 重启: 见 docs/RUNBOOK.md',
     SCOPE: '记忆体系与 DSH 使用',
+    NON_GOALS: '不做产品级实现。',
     FOCUS: '自测',
     CURRENT_STATE: '刚初始化记忆体系，尚未开始实质工作。',
     FILE_LIST: 'AGENTS.md、docs/PROGRESS.md 等',
@@ -164,9 +182,27 @@ check('三类模板齐全且保护节原文一致', () => {
 });
 
 check('目录与文档存在', () => {
-  for (const file of ['README.md', 'BOOTSTRAP-PROMPT.md', 'reference/SPEC.zh.md', 'scripts/install.mjs']) {
+  for (const file of ['README.md', 'BOOTSTRAP-PROMPT.md', 'reference/SPEC.zh.md', 'reference/RESEARCH-2026-10.zh.md', 'scripts/install.mjs', 'lib/index.js', 'cordis.patch.yml', 'package.json']) {
     assert(existsSync(join(ROOT, file)), `缺 ${file}`);
   }
+});
+
+check('bundle 插件元数据完整', () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  assertEqual(pkg.name, 'dsh-project-memory-init', '包名');
+  assertEqual(pkg.dsh?.bundle?.patch, './cordis.patch.yml', 'bundle patch');
+  assert(typeof pkg.engines?.dsh === 'string' && pkg.engines.dsh.length > 0, '缺 engines.dsh');
+  for (const file of ['SKILL.md', 'templates', 'reference', 'scripts', 'lib/index.js']) {
+    assert(pkg.files.includes(file), `files 未包含 ${file}`);
+  }
+  const patch = readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8');
+  assert(patch.includes("name: 'dsh-project-memory-init'"), 'patch 未插入包名');
+});
+
+check('SKILL.md 包含 opt-out 与默认工作区规则', () => {
+  const text = readFileSync(join(ROOT, 'SKILL.md'), 'utf8');
+  assert(text.includes('.dsh/no-project-memory'), '缺 opt-out marker 规则');
+  assert(text.includes('记忆: 关闭'), '缺 AGENTS 记忆关闭规则');
 });
 
 process.stdout.write('\n[2] 生成 + 校验（三类工作区）\n');
@@ -185,6 +221,7 @@ for (const profile of ['dev', 'ops', 'knowledge']) {
       const lines = agents.split(/\r?\n/).length;
       assert(lines <= 60, `AGENTS.md ${lines} 行，超过 60 行预算`);
       assert(result.json.todos.count >= 0, 'todos 统计缺失');
+      assert(!result.json.warnings.some((w) => w.includes('规范版本') || w.includes('缺少「> 规范')), '版本行未识别');
     });
   });
 }
@@ -251,6 +288,37 @@ check('「（待补充）」只产生 WARN', () => {
   });
 });
 
+check('本机私有文件未 gitignore → WARN', () => {
+  withTemp((dir) => {
+    assemble('dev', dir);
+    writeFileSync(join(dir, 'AGENTS.local.md'), '# 本机\n- 路径: /tmp\n');
+    const result = runVerify(dir);
+    assertEqual(result.status, 0, '不应失败');
+    assert(result.json.warnings.some((w) => w.includes('AGENTS.local.md')), '应提醒未 gitignore');
+  });
+});
+
+check('本机私有文件已 gitignore → 不提醒', () => {
+  withTemp((dir) => {
+    assemble('dev', dir);
+    writeFileSync(join(dir, 'AGENTS.local.md'), '# 本机\n- 路径: /tmp\n');
+    writeFileSync(join(dir, '.gitignore'), 'AGENTS.local.md\ndocs/local/\n');
+    const result = runVerify(dir);
+    assertEqual(result.status, 0, '不应失败');
+    assert(!result.json.warnings.some((w) => w.includes('AGENTS.local.md')), '已 gitignore 不应提醒');
+  });
+});
+
+check('AGENTS.md 指针指向缺失文件 → WARN', () => {
+  withTemp((dir) => {
+    const agents = `${assemble('dev', dir)}\n- 运维步骤 → docs/RUNBOOK.md\n`;
+    writeFileSync(join(dir, 'AGENTS.md'), agents);
+    const result = runVerify(dir);
+    assertEqual(result.status, 0, '指针问题应为 WARN');
+    assert(result.json.warnings.some((w) => w.includes('docs/RUNBOOK.md')), '应提醒缺失指针');
+  });
+});
+
 process.stdout.write('\n[4] 安装脚本\n');
 check('install.mjs 安装/重复安装/覆盖', () => {
   withTemp((root) => {
@@ -275,6 +343,23 @@ check('SPEC 收录三类保护节原文', () => {
   assert((spec.match(/## 进度衔接（必须保留本节原文）/g) ?? []).length >= 3, '进度衔接原文至少 3 份');
   assert((spec.match(/## 自维护触发器（必须保留本节原文）/g) ?? []).length >= 3, '触发器原文至少 3 份');
   assert(spec.includes('RUNBOOK.md') && spec.includes('NOTES.md'), '规范应覆盖两类新文件');
+});
+
+process.stdout.write('\n[6] bundle 插件 provider\n');
+await checkAsync('provider 注册并可加载 SKILL.md', async () => {
+  const mod = await import(pathToFileURL(join(ROOT, 'lib', 'index.js')).href);
+  let provider;
+  const ctx = { skills: { registerProvider(factory) { provider = factory(); } } };
+  mod.apply(ctx);
+  assert(provider !== undefined, '未注册 provider');
+  const candidates = await provider.list();
+  assertEqual(candidates.length, 1, '候选数量');
+  assertEqual(candidates[0].name, 'project-memory-init', 'skill 名');
+  assert(candidates[0].resourceBase.path.includes('project-memory-init'), 'resourceBase 路径');
+  const loaded = await provider.get(candidates[0]);
+  assert(loaded.content.includes('# 项目记忆初始化'), '未加载 SKILL.md 正文');
+  assert(loaded.content.includes('第 1 步：侦察'), '正文不完整');
+  assert(!loaded.content.startsWith('---'), '未剥离 frontmatter');
 });
 
 process.stdout.write(`\n结果: ${passed} 通过, ${failed} 失败\n`);

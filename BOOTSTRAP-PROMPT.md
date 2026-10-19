@@ -10,19 +10,23 @@
 ```text
 你是刚装好的 DSH。请先完成一次性的「项目记忆技能」安装，然后初始化当前工作区。
 
-1. 把 project-memory-init 技能安装到用户级技能根（任选其一）：
+1. 推荐用插件方式：打开 DSH 的「设置 / 插件」→「添加插件」，粘贴仓库地址
+   https://github.com/<YOUR_NAME>/dsh-project-memory-init
+   安装后按提示重启/刷新；若 UI 不可用，再用下面的命令行兜底。
+2. 命令行兜底（二选一）：
    git clone <YOUR_REPO_URL> ~/.dsh/skills/project-memory-init
-   # 若已克隆到本地，也可运行：node <本地路径>/scripts/install.mjs
-2. 安装后先自检文件是否齐全：
+   # 或本地已有目录：node <本地路径>/scripts/install.mjs
+3. 安装后自检：
    ls ~/.dsh/skills/project-memory-init/SKILL.md
    node ~/.dsh/skills/project-memory-init/scripts/verify-memory.mjs --help
-3. 然后在新开的会话里，用「初始化项目」为当前目录生成记忆体系。
+4. 然后在新开的会话里，用「初始化项目」为当前目录生成记忆体系。
    （当前会话若看不到技能目录，直接按
    ~/.dsh/skills/project-memory-init/SKILL.md 的指令手动执行。）
-4. 完成后告诉我：安装了哪些文件、当前工作区类型、生成了哪些记忆文件、还有哪些「（待补充）」。
+5. 完成后告诉我：安装了哪些文件、当前工作区类型、生成了哪些记忆文件、还有哪些「（待补充）」。
 ```
 
-装好后，以后每台新机器只需要第 1 步。
+装好后，以后每台新机器只需要第 1 步（或第 2 步）。
+如果当前目录是 `default` 这类临时工作区，不要初始化；可放 `.dsh/no-project-memory` 标记。
 
 ---
 
@@ -35,7 +39,7 @@
 规则：
 - 生成 AGENTS.md 和 docs/PROGRESS.md、docs/KNOWN-ISSUES.md、docs/DECISIONS.md。
 - 根据目录内容判断类型：有 package.json/pyproject.toml/go.mod/src 等 → 开发；有 docker-compose/服务器清单/运维文档 → 运维（额外生成 docs/RUNBOOK.md）；主要是 Markdown/资料/学习笔记 → 知识（额外生成 docs/NOTES.md）。判断不了按开发处理。
-- AGENTS.md 结构：# 工作区名；> 类型/日期/一句话；类型专属节；## 工作约定；## 边界与红线；## 进度衔接（必须保留本节原文）；## 自维护触发器（必须保留本节原文）；## 记忆文件。
+- AGENTS.md 结构：# 工作区名；> 类型/规范版本/日期/一句话；类型专属节（开发加「## 定位与边界」）；## 工作约定；## 边界与红线；## 进度衔接（必须保留本节原文）；## 自维护触发器（必须保留本节原文）；## 记忆文件。
 - 两个「必须保留本节原文」的节逐字使用下面原文，不得改写。
 - 未知值写「（待补充：…）」，禁止编造命令、地址、版本。
 - 不写密钥/令牌/密码；只写「去哪找」。

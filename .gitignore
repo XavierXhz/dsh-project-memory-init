@@ -2,3 +2,6 @@ node_modules/
 dist/
 .DS_Store
 Thumbs.db
+AGENTS.local.md
+docs/local/
+.dsh/

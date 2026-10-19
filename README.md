@@ -4,58 +4,66 @@
 `AGENTS.md` + `docs/PROGRESS.md` / `KNOWN-ISSUES.md` / `DECISIONS.md`，并按工作区类型追加
 `RUNBOOK.md`（运维）或 `NOTES.md`（知识学习）。
 
-- 纯 Markdown + 一个零依赖 Node 校验脚本；不建数据库、不装包、不联网。
-- 目标：**换电脑 / 换目录，一句话就能恢复同一套工作记忆规范。**
-- 配套规范：`reference/SPEC.zh.md`（v2.0）；模板：`templates/`。
+- 纯 Markdown + 零依赖 Node 校验脚本；不建数据库、不装包、不联网。
+- 目标：**换电脑 / 换目录，一句话恢复同一套工作记忆规范。**
+- 规范：`reference/SPEC.zh.md`（v2.1）；同类项目对比：`reference/RESEARCH-2026-10.zh.md`。
+- 三种安装形态：**bundle 插件（UI 粘贴 URL 一键装）**、纯技能目录、首次引导提示词。
 
 ---
 
-## 为什么是 Skill，不是 Plugin，也不是一段提示词
+## 为什么既是 Skill，又能当插件
 
-| 形态 | 适合什么 | 结论 |
+| 形态 | 作用 | 结论 |
 |---|---|---|
-| **Skill（本仓库）** | 可复用的任务指令 + 模板 + 脚本；按需加载，不进每轮上下文 | ✅ **主形态** |
-| Plugin | 需要运行时能力：UI、命令、工具、自动注入、后台任务 | ❌ 本需求没有运行时行为；做插件只会增加 npm 打包与版本门禁负担 |
-| Prompt | 首次安装、离线兜底、临时使用 | ✅ **只做引导/兜底**（见 `BOOTSTRAP-PROMPT.md`） |
+| **Skill（核心）** | 初始化/升级流程、模板、校验脚本 | ✅ 规范是内容，不是运行时逻辑 |
+| **Bundle 插件（外壳）** | 把技能注册到 DSH，让 UI 一键安装 | ✅ 仅一个薄 provider，不改变核心 |
+| Prompt | 空白机器首次引导 / 离线兜底 | ✅ 只做兜底 |
 
-DSH 原生支持用户级 skill 根：`~/.dsh/skills/`、`~/.agents/skills/`，新会话的技能目录会自动列出。
-本技能被加载后给出「初始化项目」的触发描述，模型按目录现状生成文件——这正好是 Skill 的职责。
-把它做成插件，收益只是「多一个安装入口」，代价是每次 DSH 升级都要跟着适配；不划算。
-
-> 如果你以后想要「一条 `dsh plugin add` 就装好」的体验，可以把本目录包成一个只注册 skill provider 的
-> 小插件（类似官方 `dsh-skill-badge` 的做法）；但日常维护仍然是这套 Markdown，插件只是外壳。
+核心仍然是纯 Markdown；插件只是「把技能放进 DSH」的投递方式。这样既保留跨机器复制即可用的简单性，
+又能在 Web UI 里输入 URL 安装。
 
 ---
 
 ## 安装
 
-### 方式 1：克隆到用户级 skill 根（推荐，跨机器最省事）
+### 方式 1：UI 一键安装 bundle 插件（推荐）
+
+1. DSH Web UI →「设置 / 插件」→「添加插件」；
+2. 粘贴你的 Git 仓库地址，例如：
+   `https://github.com/<your-name>/dsh-project-memory-init`
+3. 按提示安装，重启 DSH（或等插件管理提示的热重载）；
+4. 新开一个会话，说「初始化项目」或输入 `/project-memory-init`。
+
+支持 Windows / Linux / macOS：插件是纯 ESM + Node 内置模块，无原生依赖、无 shell 脚本。
+插件安装成功后，技能来源显示为 `bundled`；可在插件管理器里卸载/更新。
+
+> 也支持本地绝对路径安装（开发调试）：在「添加插件」填项目绝对路径，或
+> `dsh plugin --profile <name> add /abs/path/to/project-memory-init`。
+
+### 方式 2：纯技能目录（不走插件系统）
 
 ```bash
 git clone <YOUR_REPO_URL> ~/.dsh/skills/project-memory-init
-# 或跨工具共享根：
-# git clone <YOUR_REPO_URL> ~/.agents/skills/project-memory-init
+# 或跨工具共享根：~/.agents/skills/project-memory-init
 ```
 
-克隆完即可用；更新时 `git -C ~/.dsh/skills/project-memory-init pull`。
-
-### 方式 2：复制目录 + 安装脚本（U 盘 / 网盘 / 内网传输）
+或：
 
 ```bash
 node scripts/install.mjs                 # 装到 ~/.dsh/skills/project-memory-init
 node scripts/install.mjs --root=agents   # 装到 ~/.agents/skills/project-memory-init
-node scripts/install.mjs --link          # 开发期：符号链接到当前目录
-node scripts/install.mjs --force         # 覆盖已有安装
+node scripts/install.mjs --link          # 开发期：符号链接
+node scripts/install.mjs --force         # 覆盖
 ```
 
-Windows 同样用 `node scripts/install.mjs`；无需 PowerShell 脚本。
+> 两种方式**只选一种**。同时存在时，`bundled` 来源优先级更高，会出现同名双份候选，排查时容易混淆。
 
-### 方式 3：完全空白、暂时没有本仓库
+### 方式 3：完全离线
 
-把 `BOOTSTRAP-PROMPT.md` 里「场景 B」整段粘贴给新机器上的 DSH，让它在当前目录直接生成最小可用版本；
-等能访问仓库后，再用方式 1/2 补装完整技能。
+用 `dist/project-memory-init-*.tar.gz` 或 `.zip` 拷到目标机器，解压后运行 `node scripts/install.mjs`；
+或把 `BOOTSTRAP-PROMPT.md` 的场景 B 整段粘贴给一个空白 DSH，直接生成最小版本。
 
-安装完成后：**新开一个会话**（或等技能目录 watcher 刷新），说「初始化项目」或输入 `/project-memory-init`。
+安装后：**新开会话**最稳；当前会话不保证立刻看到新技能/新插件。
 
 ---
 
@@ -69,11 +77,11 @@ Windows 同样用 `node scripts/install.mjs`；无需 PowerShell 脚本。
 
 技能会：
 
-1. 侦察当前目录（`package.json` / `pyproject.toml` / `docker-compose.yml` / 已有文档……）；
+1. 侦察目录（`package.json` / `pyproject.toml` / `docker-compose.yml` / 已有文档……）；
 2. 判定类型（开发 / 运维 / 知识），能从文件推断的不问；
 3. 生成 `AGENTS.md` 与对应 `docs/` 文件，未知项标 `（待补充）`，不编造；
-4. 跑 `scripts/verify-memory.mjs` 自检（保护节、占位符、密钥、行数）；
-5. 汇报文件清单与待补项，建议是否 `git commit`。
+4. 跑 `scripts/verify-memory.mjs` 自检（保护节、占位符、密钥、行数、私有层 gitignore）；
+5. 汇报文件清单与待补项，并明确说明：**这是骨架，AGENTS.md 需要人工审阅定稿**。
 
 可选说法：
 
@@ -83,19 +91,8 @@ Windows 同样用 `node scripts/install.mjs`；无需 PowerShell 脚本。
 | `初始化一个运维工作区` | 强制 `ops`，生成 `RUNBOOK.md` |
 | `初始化学习工作区` | 强制 `knowledge`，生成 `NOTES.md` |
 | `升级记忆规范` | 对已有项目补缺节/补文件，不覆盖旧内容 |
+| `配置本机` / `本机私有配置` | 生成 `AGENTS.local.md`（不提交，不写密钥） |
 | `初始化全局偏好` | 生成 `~/.dsh/AGENTS.md`（≤20 行，先确认） |
-
-生成后的示例结构：
-
-```text
-my-project/
-├── AGENTS.md
-└── docs/
-    ├── PROGRESS.md
-    ├── KNOWN-ISSUES.md
-    ├── DECISIONS.md
-    └── RUNBOOK.md        # ops；或 NOTES.md（knowledge）
-```
 
 ---
 
@@ -103,29 +100,39 @@ my-project/
 
 | 类型 | 用来做什么 | AGENTS.md 专属节 | 额外文件 |
 |---|---|---|---|
-| `dev` | 自己开发的项目 | 技术栈 / 常用命令 / 项目结构 | — |
+| `dev` | 自己开发的项目 | 定位与边界 / 技术栈 / 常用命令 / 项目结构 | — |
 | `ops` | 服务器、服务、部署的日常运维 | 管理对象 / 环境与访问 / 危险操作红线 / 常用操作 | `docs/RUNBOOK.md` |
 | `knowledge` | 杂项知识提问、调研、学习 | 学习范围 / 知识约定 / 当前关注 | `docs/NOTES.md` |
 
-规则细节见 `reference/SPEC.zh.md`。核心约定：
+核心约定（详见 `reference/SPEC.zh.md`）：
 
-- `AGENTS.md` ≤ 60 行，只放恒真事实；进度/坑/决策/步骤各归其文档。
+- `AGENTS.md` ≤ 60 行；只放恒真、不可推导的事实；进度/坑/决策/步骤各归其文档。
 - 两个「必须保留本节原文」的保护节（进度衔接、自维护触发器）不可改写。
 - 每次收尾更新 `PROGRESS.md`；踩坑记 `KNOWN-ISSUES.md`；定案记 `DECISIONS.md`。
-- 不写明文密钥；只写「去哪找」。
+- 不写明文密钥；只写「去哪找」；本机差异进 `AGENTS.local.md` / `docs/local/` 且 gitignore。
 - 并行会话写前先 `read`（读-改-写）；改记忆文件用编辑工具（快照陷阱）。
+- 风格/格式规则交给 linter/CI；AGENTS.md 只写工具无法强制的约定。
+
+### 临时 / 探索工作区（例如 `default`）
+
+`default` 这类「不确定怎么分类、也不需要在会话间共享」的目录，**不需要初始化记忆**：
+
+- 技能目录里只有一行描述，不调用就不会生成任何文件；
+- 如需显式关掉，在根目录放一个空文件 `.dsh/no-project-memory`，或在 `AGENTS.md` 顶部写 `> 记忆: 关闭`；
+  技能识别后会直接停止并告知。
 
 ---
 
 ## 跨机器同步（家里 / 公司 / 出差）
 
-1. 把本目录（或整个技能仓）放进一个**私有 git 仓库**。
-2. 每台机器只需一次：`git clone <URL> ~/.dsh/skills/project-memory-init`。
-3. 更新：`git -C ~/.dsh/skills/project-memory-init pull`。
-4. 不想用 git：用网盘/U 盘同步整个目录，再在新机器上 `node scripts/install.mjs`。
-5. 工作区本身的记忆文件也建议进各自项目仓库（或单独的 memory 仓库），否则换机器只带走了技能、没带走记忆。
+1. 把本目录放进一个**私有 git 仓库**（插件安装也用它）。
+2. 每台机器任选一种：UI 粘贴仓库 URL 安装插件；或 `git clone` 到 `~/.dsh/skills/project-memory-init`。
+3. 更新：插件管理器更新 / `git pull` / 重新运行 `install.mjs --force`。
+4. 不想用 git：网盘/U 盘同步目录，再 `node scripts/install.mjs`。
+5. **工作区本身的记忆文件**也建议进各自项目仓库（或单独的 memory 仓库），否则换机器只带走了生成器、没带走记忆。
 
-> 技能是「生成器」，工作区里的 `AGENTS.md`/`docs/` 才是「记忆」。两者都要跨机器同步。
+> 技能是「生成器」，工作区里的 `AGENTS.md`/`docs/` 才是「记忆」。两者都要同步。
+> 机器相关差异放 `AGENTS.local.md` / `docs/local/`，各机器自己维护，不提交。
 
 ---
 
@@ -134,33 +141,40 @@ my-project/
 ```text
 project-memory-init/
 ├── SKILL.md                  # 技能入口（模型加载的指令）
-├── README.md                 # 本文件（给人看）
-├── BOOTSTRAP-PROMPT.md       # 空白 DSH 的一次性引导提示词
-├── templates/                # 逐字模板（base + 类型差异 + 文档）
-├── reference/SPEC.zh.md      # 规范正文 v2.0
+├── package.json              # bundle 插件元数据（dsh.bundle.patch）
+├── cordis.patch.yml          # 插件插入行
+├── lib/index.js              # 注册 skill provider（薄壳，无依赖）
+├── icon.svg
+├── README.md                 # 本文件
+├── BOOTSTRAP-PROMPT.md       # 空白 DSH 的一次性提示词
+├── templates/                # 逐字模板（base + 类型差异 + 文档 + 本机覆盖）
+├── reference/
+│   ├── SPEC.zh.md            # 规范 v2.1
+│   └── RESEARCH-2026-10.zh.md# 同类项目/论文/HN 对比
 ├── scripts/
 │   ├── verify-memory.mjs     # 只读校验
 │   └── install.mjs           # 安装到用户级 skill 根
-└── tests/run-tests.mjs       # 自测（生成 + 校验 + 安装）
+└── tests/run-tests.mjs       # 自测（生成 + 校验 + 安装 + 插件 provider）
 ```
 
 ---
 
 ## 维护与卸载
 
-- 更新：`git pull`（或重新复制后 `install.mjs --force`）。
-- 卸载：删除 `~/.dsh/skills/project-memory-init`。
-- 自测：`node tests/run-tests.mjs`（会在临时目录生成 3 类工作区并校验）。
+- 更新插件：插件管理器更新，或重新安装；更新纯技能：`git pull` / `install.mjs --force`。
+- 卸载插件：插件管理器卸载；卸载纯技能：删除 `~/.dsh/skills/project-memory-init`。
+- 自测：`node tests/run-tests.mjs`（临时目录生成 3 类工作区并校验，另测安装与 provider）。
 - 校验某个工作区：`node scripts/verify-memory.mjs <工作区目录>`。
 
-## 设计依据（DSH 机制事实）
+## 设计依据（摘要）
 
-- 技能发现根：项目 `<root>/.dsh/skills`、`<root>/.agents/skills`；用户 `~/.dsh/skills`、`~/.agents/skills`；本技能放用户根即全局可用。
-- `AGENTS.md` 由 DSH 自动加载（`.git` 向上找根；无 `.git` 时用当前目录），并支持 `AGENTS.local.md` 覆盖。
-- 上下文里的 `AGENTS.md` 是快照：用编辑工具改才会刷新；bash/外部编辑器改不触发。
-- 用户级 `~/.dsh/AGENTS.md` 也会自动加载：只放跨项目偏好，别放项目内容。
-- 技能目录热更新：新增/修改 `SKILL.md` 会触发目录 watcher；老会话不一定立即刷新，新会话最稳。
+- **AGENTS.md** 是跨工具入口，Claude Code 在无 `CLAUDE.md` 时直接读；Gemini CLI 可配置；60k+ 项目采用。
+- **Claude Code** 建议单文件 <200 行；`AGENTS.md` 是 context 不是 enforced config；auto memory 机器本地、有 200 行/25KB 上限。
+- **三项 2026 研究**结论不一致：有正效率证据（运行时间 −28.6%、输出 token −16.6%），也有「成功率无显著提升、成本 +20%」和「正确率无显著变化」；因此本规范**不承诺提效**，只做「减少重复解释 + 保留不可推导信息」。
+- **Cline Memory Bank** 六文件、**Operator Memory** 三区（private/shared/user）、**agentsge** `.agents/` 索引，分别对应我们的「分层」「本机私有层」「常驻指针索引」。
+- 完整对比与链接见 `reference/RESEARCH-2026-10.zh.md` 和 `reference/SPEC.zh.md §13`。
 
 ## 版本
 
-v2.0（2026-10-19）：三类工作区、`RUNBOOK.md`/`NOTES.md`、边界与红线、按类型触发器、拒绝写入清单、复验/归档、跨机器安装。
+v2.1（2026-10-19）：定位与边界、本机私有覆盖层、任务形状读取、跨工具/嵌套 AGENTS、证据平衡、临时工作区 opt-out、bundle 插件安装。
+v2.0：三类工作区、RUNBOOK/NOTES、边界与红线、按类型触发器、拒绝写入清单、复验/归档、跨机器安装。

@@ -1,0 +1,3 @@
+- insert:
+    - id: project-memory-init
+      name: 'dsh-project-memory-init'

@@ -1,0 +1,48 @@
+{
+  "name": "dsh-project-memory-init",
+  "version": "2.1.0",
+  "description": "DSH bundle plugin: one-phrase project memory init (AGENTS.md + docs) for dev/ops/knowledge workspaces",
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./icon.svg",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./icon.svg": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "SKILL.md",
+    "README.md",
+    "BOOTSTRAP-PROMPT.md",
+    "LICENSE",
+    "templates",
+    "reference",
+    "scripts"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2"
+  },
+  "scripts": {
+    "test": "node tests/run-tests.mjs",
+    "verify": "node scripts/verify-memory.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "skill",
+    "agents-md",
+    "project-memory"
+  ],
+  "license": "MIT"
+}

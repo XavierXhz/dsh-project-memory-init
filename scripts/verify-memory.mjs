@@ -17,13 +17,14 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_DIR = join(SCRIPT_DIR, '..', 'templates');
 
 const PROFILE_LABELS = { dev: '开发', ops: '运维', knowledge: '知识' };
+const SPEC_VERSION = '2.1';
 const AGENTS_REQUIRED = ['工作约定', '边界与红线', '记忆文件'];
 const PROTECTED = [
   '进度衔接（必须保留本节原文）',
   '自维护触发器（必须保留本节原文）',
 ];
 const PROFILE_AGENTS_SECTIONS = {
-  dev: ['技术栈', '常用命令', '项目结构'],
+  dev: ['定位与边界', '技术栈', '常用命令', '项目结构'],
   ops: ['管理对象', '环境与访问', '危险操作红线', '常用操作'],
   knowledge: ['学习范围', '知识约定', '当前关注'],
 };
@@ -252,6 +253,35 @@ function checkLineBudget(relPath, text, limit, warnings, errors) {
   }
 }
 
+
+/** 检查 AGENTS.md 里的 docs/*.md 指针是否指向真实文件。 */
+function checkPointerTargets(root, text, warnings) {
+  const clean = stripNoise(text);
+  const seen = new Set();
+  for (const match of clean.matchAll(/→\s*(docs\/[A-Za-z0-9._-]+\.md)/g)) {
+    const target = match[1];
+    if (seen.has(target)) continue;
+    seen.add(target);
+    if (!existsSync(join(root, target))) warnings.push(`AGENTS.md: 指针指向不存在的文件 ${target}`);
+  }
+}
+
+/** 本机私有文件必须被 .gitignore 覆盖。 */
+function checkLocalOverlay(root, warnings, errors) {
+  const gitignore = readText(root, '.gitignore') ?? '';
+  const localAgents = join(root, 'AGENTS.local.md');
+  const localDir = join(root, 'docs', 'local');
+  if (existsSync(localAgents)) {
+    if (!/AGENTS\.local\.md/.test(gitignore)) warnings.push('AGENTS.local.md: 存在但未被 .gitignore 覆盖，可能被提交');
+    const text = readText(root, 'AGENTS.local.md') ?? '';
+    checkSecrets('AGENTS.local.md', text, errors);
+    checkPlaceholders(root, 'AGENTS.local.md', text, errors);
+  }
+  if (existsSync(localDir) && !/(^|\/)docs\/local\/?/m.test(gitignore) && !/(^|\/)local\/?/m.test(gitignore)) {
+    warnings.push('docs/local/: 存在但未被 .gitignore 覆盖，可能被提交');
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const root = args.dir;
@@ -274,6 +304,11 @@ function main() {
     checkLineBudget('AGENTS.md', agentsText, 60, warnings, errors);
     const typeLine = agentsText.match(/^>\s*类型\s*[:：]\s*(.+)$/m);
     if (!typeLine) warnings.push('AGENTS.md: 缺少「> 类型: …」行（旧模板可忽略）');
+    const versionLine = agentsText.match(/^>.*?规范\s*[:：]\s*project-memory-init\/([0-9.]+)/m);
+    if (!versionLine) warnings.push('AGENTS.md: 缺少「> 规范: project-memory-init/2.1」行（旧模板可忽略）');
+    else if (versionLine[1] !== SPEC_VERSION) warnings.push(`AGENTS.md: 规范版本 ${versionLine[1]}，当前 ${SPEC_VERSION}，建议按 §10.2 升级`);
+    checkPointerTargets(root, agentsText, warnings);
+    checkLocalOverlay(root, warnings, errors);
   }
 
   const requiredDocs = [...CORE_DOCS];

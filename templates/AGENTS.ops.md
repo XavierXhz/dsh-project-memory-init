@@ -1,5 +1,6 @@
 ## 管理对象
 {{TARGETS}}
+- 不管理/非目标: {{NON_GOALS}}
 
 ## 环境与访问
 - 环境: {{ENVIRONMENTS}}
