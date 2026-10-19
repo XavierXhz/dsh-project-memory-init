@@ -30,7 +30,7 @@
 
 1. DSH Web UI →「设置 / 插件」→「添加插件」；
 2. 粘贴你的 Git 仓库地址，例如：
-   `https://github.com/<your-name>/dsh-project-memory-init`
+   `https://github.com/XavierXhz/dsh-project-memory-init`
 3. 按提示安装，重启 DSH（或等插件管理提示的热重载）；
 4. 新开一个会话，说「初始化项目」或输入 `/project-memory-init`。
 
@@ -39,11 +39,14 @@
 
 > 也支持本地绝对路径安装（开发调试）：在「添加插件」填项目绝对路径，或
 > `dsh plugin --profile <name> add /abs/path/to/project-memory-init`。
+>
+> **私有仓库注意**：新机器如果没登录 GitHub，私有仓库的 Git 安装会要求凭据；先 `gh auth login` / 配好 git credential，
+> 或把仓库设为 public（本仓库不含密钥，只有规范与脚本）。
 
 ### 方式 2：纯技能目录（不走插件系统）
 
 ```bash
-git clone <YOUR_REPO_URL> ~/.dsh/skills/project-memory-init
+git clone https://github.com/XavierXhz/dsh-project-memory-init ~/.dsh/skills/project-memory-init
 # 或跨工具共享根：~/.agents/skills/project-memory-init
 ```
 

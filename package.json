@@ -44,5 +44,9 @@
     "agents-md",
     "project-memory"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XavierXhz/dsh-project-memory-init.git"
+  },
   "license": "MIT"
 }

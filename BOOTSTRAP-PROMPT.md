@@ -1,7 +1,7 @@
 # BOOTSTRAP-PROMPT — 空白 DSH 的一次性引导
 
 > 用途：一台刚装好 DSH、还没有本技能的机器。把对应场景整段粘贴到会话里。
-> 先替换 `<YOUR_REPO_URL>`（你的私有仓库地址）和 `<...>` 里的路径。
+> 仓库地址：`https://github.com/XavierXhz/dsh-project-memory-init`（私有仓库，新机器需先有 GitHub 凭据；或改为 public）。
 
 ---
 
@@ -11,10 +11,10 @@
 你是刚装好的 DSH。请先完成一次性的「项目记忆技能」安装，然后初始化当前工作区。
 
 1. 推荐用插件方式：打开 DSH 的「设置 / 插件」→「添加插件」，粘贴仓库地址
-   https://github.com/<YOUR_NAME>/dsh-project-memory-init
+   https://github.com/XavierXhz/dsh-project-memory-init
    安装后按提示重启/刷新；若 UI 不可用，再用下面的命令行兜底。
 2. 命令行兜底（二选一）：
-   git clone <YOUR_REPO_URL> ~/.dsh/skills/project-memory-init
+   git clone https://github.com/XavierXhz/dsh-project-memory-init ~/.dsh/skills/project-memory-init
    # 或本地已有目录：node <本地路径>/scripts/install.mjs
 3. 安装后自检：
    ls ~/.dsh/skills/project-memory-init/SKILL.md

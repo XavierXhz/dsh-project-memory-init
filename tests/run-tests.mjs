@@ -197,6 +197,13 @@ check('bundle 插件元数据完整', () => {
   }
   const patch = readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8');
   assert(patch.includes("name: 'dsh-project-memory-init'"), 'patch 未插入包名');
+  const lib = readFileSync(join(ROOT, 'lib/index.js'), 'utf8');
+  assert(!/from\s+['"]@deepseek-ai\//.test(lib), '插件不应 import 内部 @deepseek-ai 包');
+});
+
+check('本机模板不叫 AGENTS.local.md（避免被自动加载）', () => {
+  assert(existsSync(join(TEMPLATES, 'AGENTS.local.template.md')), '缺本机模板');
+  assert(!existsSync(join(TEMPLATES, 'AGENTS.local.md')), '模板名会被 DSH 当成真实本机指令加载');
 });
 
 check('SKILL.md 包含 opt-out 与默认工作区规则', () => {
