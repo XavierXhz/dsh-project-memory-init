@@ -2,10 +2,10 @@
 name: project-memory-init
 description: >-
   初始化或升级工作区的跨会话文件记忆体系：生成 AGENTS.md 与 docs/PROGRESS.md、
-  KNOWN-ISSUES.md、DECISIONS.md，并按工作区类型追加 RUNBOOK.md（运维）或
-  NOTES.md（知识学习）。当用户说「初始化项目 / 初始化工作区 / 建立项目记忆 /
-  生成 AGENTS.md / 记忆规范 / 新目录开工」，或在一个没有记忆文件的新目录开始
-  长期工作时使用。自动识别开发/运维/知识三类场景；不覆盖已有文件，不写密钥，
+  KNOWN-ISSUES.md、DECISIONS.md，运维工作区追加 RUNBOOK.md。当用户说「初始化
+  项目 / 初始化工作区 / 建立项目记忆 / 生成 AGENTS.md / 记忆规范 / 新目录开工」，
+  或在一个没有记忆文件的新目录开始长期工作时使用。只支持开发与运维两类；
+  知识/学习类目录不初始化（技能会说明原因）。不覆盖已有文件，不写密钥，
   不编造命令。
 ---
 
@@ -31,14 +31,19 @@ description: >-
 |---|---|---|
 | 开发 `dev` | 定位与边界 / 技术栈 / 常用命令 / 项目结构 | AGENTS.md、docs/PROGRESS.md、docs/KNOWN-ISSUES.md、docs/DECISIONS.md |
 | 运维 `ops` | 管理对象 / 环境与访问 / 危险操作红线 / 常用操作 | 同上 + docs/RUNBOOK.md |
-| 知识 `knowledge` | 学习范围 / 知识约定 / 当前关注 | 同上 + docs/NOTES.md |
 
 混合场景（有代码又有部署）：主类型取 `dev`，额外生成 `docs/RUNBOOK.md`，并在 AGENTS.md 的「记忆文件」节加一行指针。
+
+**不支持的场景：知识/学习类目录**（无代码 manifest、主体是 Markdown/PDF/资料、或用户说「学习/调研/资料整理」）。
+这类目录**不初始化、不生成任何文件**：它们通常一个目录里跑多个不同主题的会话，而本体系的 PROGRESS/DECISIONS 是线性项目模型，会互相覆盖、只增噪音。遇到时只做说明，并给出替代做法：
+- 依赖 `session_search` / `@` 会话引用回查历史会话；
+- 真正值得留的结论，按主题手写 `docs/notes/<主题>.md`（一个主题一个文件），不做四件套、不建进度。
+
 旧项目已有 AGENTS.md 时：只补缺失文件与缺失节，绝不覆盖、绝不改写已有「必须保留本节原文」的节。
 
 ## 已有文件时怎么处理
 
-1. **AGENTS.md 已存在**：先 `read`。只追加缺失的类型专属节/指针节；已有节不改；两个保护节原样保留。类型以文件头部「> 类型:」为准，冲突时问用户一次；旧文件没有类型行时，只在标题下补 `> 类型: 开发/运维/知识` 一行（不编造建立日期），不改其他内容。
+1. **AGENTS.md 已存在**：先 `read`。只追加缺失的类型专属节/指针节；已有节不改；两个保护节原样保留。类型以文件头部「> 类型:」为准，冲突时问用户一次；旧文件没有类型行时，只在标题下补 `> 类型: 开发/运维` 一行（不编造建立日期），不改其他内容。
 2. **docs 文件已存在**：不覆盖。PROGRESS 只在内容为空/仅模板时补初始化条目，否则跳过并在汇报里说明；其余文件同理。
 3. **部分存在、部分缺失**：只补缺；生成后仍跑校验，把「已存在跳过」和「新建」分开列表。
 4. **用户要求重建**：先说明会丢失哪些内容，得到确认后再做；默认不重建。
@@ -55,18 +60,19 @@ description: >-
 
 1. 确认会话工作目录 `pwd`；若在子目录，向上找 `.git`，没有 `.git` 就把当前目录当工作区根目录。
 2. **先检查 opt-out 标记**：根目录存在 `.dsh/no-project-memory`，或 `AGENTS.md` 顶部有 `> 记忆: 关闭` → 该工作区被标记为临时/不共享记忆，**停止，不生成任何文件**，只向用户确认「该工作区已标记为不初始化记忆」。
-3. 检查已存在的记忆文件：`AGENTS.md`、`AGENTS.local.md`、`CLAUDE.md`、`docs/PROGRESS.md`、`docs/KNOWN-ISSUES.md`、`docs/DECISIONS.md`、`docs/RUNBOOK.md`、`docs/NOTES.md`。
+3. 检查已存在的记忆文件：`AGENTS.md`、`AGENTS.local.md`、`CLAUDE.md`、`docs/PROGRESS.md`、`docs/KNOWN-ISSUES.md`、`docs/DECISIONS.md`、`docs/RUNBOOK.md`。
 4. 收集类型信号（见下表）。用 `read` 读 README、manifest、已有文档；**不要执行项目命令，不要安装依赖**。
 
 | 类型 | 强信号 | 弱信号 |
 |---|---|---|
 | dev | `package.json` / `pyproject.toml` / `go.mod` / `Cargo.toml` / `pom.xml` / `*.csproj` / `src/` | Makefile、测试目录、`.github/workflows/`、git 里有代码提交 |
 | ops | `docker-compose.y*ml` / `ansible.cfg` / `inventory*` / `*.tf` / k8s 清单 / 服务器清单 / 已有 RUNBOOK | README 写「部署/运维/服务器」、目录名含 deploy/ops/infra |
-| knowledge | 无代码 manifest，主体是 Markdown/PDF/资料 | 目录名含 notes/学习/调研/knowledge、用户说「学习/调研/资料整理」 |
+| 知识（**不初始化**） | 无代码 manifest，主体是 Markdown/PDF/资料 | 目录名含 notes/学习/调研/knowledge、用户说「学习/调研/资料整理」 |
 
 ### 第 2 步：判定类型与采集事实
 
 **类型**：按上表判定。若同时有代码和部署文件 → `dev` + RUNBOOK。若目录为空且用户消息也没给信息 → 默认 `dev`，不要为此单独发问。
+**知识类判定为「不初始化」**：命中知识信号且没有 dev/ops 强信号 → 停止，不写任何文件，向用户说明「知识/学习类目录不适用本记忆体系」并给出替代做法（见输出矩阵）。用户明确坚持要建时，也不要生成四件套；最多按主题写 `docs/notes/<主题>.md`，并说明这不是本规范的一部分。
 **提问策略**：最多问 **一轮**，最多 3 个问题（用 `ask_user_question`），且只在「类型无法判定」或「项目名/一句话说明完全无法推断」时问；用户说「直接生成 / 不用问 / 快速」时一律不问。能从文件推断的绝不问。
 
 采集（只填可核实项，推不出的用 `（待补充：…）`）：
@@ -76,18 +82,17 @@ description: >-
 - **定位与边界（dev）**：是什么/给谁、不做什么；从 README/用户消息提取，推不出就 `（待补充）`，不要写仓库概览。
 - **dev**：技术栈（只写不可从 manifest 直接看出的约束）、安装/开发/测试/构建命令（`package.json` scripts、Makefile、pyproject、README 命令段）、顶层目录职责（只写非显而易见的归属/放置规则，不列完整目录树）。
 - **ops**：管理对象（主机/服务/域名）、不管理/非目标、环境（生产/测试）、访问入口与凭据存放位置（**只写位置**）、变更窗口、常用操作、备份与回滚方式。
-- **knowledge**：学习范围、非目标、当前关注主题、已有资料入口。
 - **工作约定**：最多写 1～3 条能从仓库或用户消息确认、且工具无法强制的硬规矩；没有就写 `（待补充：代码风格 / 提交规范 / 必跑命令）`。
 
 ### 第 3 步：生成文件
 
 使用 `write` 工具写文件（**不要用 bash heredoc 或 `sed` 生成**，否则当前会话拿不到指令更新）。按顺序：
 
-1. **AGENTS.md**：`templates/AGENTS.base.md` 为主体，把 `{{PROFILE_SECTIONS}}` 换成 `templates/AGENTS.<类型>.md` 全文，把 `{{TRIGGER_SECTION}}` 换成 `templates/TRIGGER.<类型>.md` 全文，把 `{{EXTRA_POINTERS}}` 换成额外指针（RUNBOOK/NOTES，或空）。
+1. **AGENTS.md**：`templates/AGENTS.base.md` 为主体，把 `{{PROFILE_SECTIONS}}` 换成 `templates/AGENTS.<dev|ops>.md` 全文，把 `{{TRIGGER_SECTION}}` 换成 `templates/TRIGGER.<dev|ops>.md` 全文，把 `{{EXTRA_POINTERS}}` 换成额外指针（`docs/RUNBOOK.md` 指针，或空）。
 2. **docs/PROGRESS.md**：初始「当前状态」=「刚初始化记忆体系，尚未开始实质工作。」；「已完成」保留初始化条目；「下一步」写一个具体的 `- [ ] （待补充：第一个具体任务）`。
 3. **docs/KNOWN-ISSUES.md**、**docs/DECISIONS.md**：按模板；DECISIONS 保留「初始化文件记忆体系」条目。
-4. **按类型追加**：`ops` → `docs/RUNBOOK.md`；`knowledge` → `docs/NOTES.md`；`dev` + 部署信号 → `docs/RUNBOOK.md`。
-5. 替换所有 `{{...}}` 模板标记：`{{SPEC_VERSION}}` 填 `2.1`；`{{PROFILE_LABEL}}` 填 开发/运维/知识；`{{WHAT_WHO}}`/`{{NON_GOALS}}` 填定位/非目标；`{{EXTRA_DECISION}}` 按类型填 `、RUNBOOK.md` / `、NOTES.md` / 空；`{{FILE_LIST}}` 填实际生成的文件；`{{DATETIME}}` 填当前时间。未知值写 `（待补充：…）`，**禁止**编造命令、地址、版本号。
+4. **按类型追加**：`ops` → `docs/RUNBOOK.md`；`dev` + 部署信号 → `docs/RUNBOOK.md`。
+5. 替换所有 `{{...}}` 模板标记：`{{SPEC_VERSION}}` 填 `2.2`；`{{PROFILE_LABEL}}` 填 开发/运维；`{{WHAT_WHO}}`/`{{NON_GOALS}}` 填定位/非目标；`{{EXTRA_DECISION}}` 按类型填 `、RUNBOOK.md` 或空；`{{FILE_LIST}}` 填实际生成的文件；`{{DATETIME}}` 填当前时间。未知值写 `（待补充：…）`，**禁止**编造命令、地址、版本号。
 6. 写完立即 `read` 一遍 AGENTS.md 与 PROGRESS.md，刷新当前会话的指令快照。
 7. **可选**：用户明确说「配置本机 / 本机私有」时，才用 `templates/AGENTS.local.template.md` 生成 `AGENTS.local.md`（≤20 行，不写密钥），并提醒加入 `.gitignore`；默认不生成。
 
@@ -99,7 +104,8 @@ node "<本技能目录>/scripts/verify-memory.mjs" "<工作区根目录>"
 
 - 先修完全部 `ERROR`（模板标记残留、缺节、保护节被改写、疑似密钥、缺文件）。
 - `WARN`（`（待补充）`、文件超预算、本机私有文件未 gitignore、缺版本行）逐条列进汇报，不要假装没有。
-- 若脚本报类型不符，可加 `--profile=dev|ops|knowledge` 重跑。
+- 若脚本报类型不符，可加 `--profile=dev|ops` 重跑。
+- 脚本对「已标记不初始化」「知识/学习类目录」「未初始化且无信号」三种情况会输出「跳过」并 exit 0，不算失败。
 
 ### 第 5 步：汇报
 
@@ -119,6 +125,7 @@ node "<本技能目录>/scripts/verify-memory.mjs" "<工作区根目录>"
 - **不编造**：命令、地址、依赖版本、运维对象必须来自文件或用户；不确定就标 `（待补充）`。
 - **不执行**：不运行项目命令、不装依赖、不 `git commit`（除非用户明确要求）。
 - **不越界**：只写上面矩阵里的文件；不顺手生成 README、CI、代码骨架；不生成 `CLAUDE.md`/`GEMINI.md` 副本。
+- **不对知识目录初始化**：知识/学习/资料类目录一律不生成记忆文件；不要为了"看起来完整"而套用开发模板。
 - **不替人定稿**：自动生成只是骨架；不把风格/linter 规则写进 AGENTS.md，不假装完成人工审阅。
 - **一轮提问**：最多问一轮、最多 3 个问题；能从上下文推断的不问。
 

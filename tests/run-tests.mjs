@@ -63,14 +63,14 @@ function fill(text, facts) {
   );
 }
 
-const PROFILE_LABEL = { dev: '开发', ops: '运维', knowledge: '知识' };
+const PROFILE_LABEL = { dev: '开发', ops: '运维' };
 
 function assemble(profile, dir, facts = {}) {
   const date = '2026-10-19';
   const baseFacts = {
     PROJECT_NAME: 'demo-project',
     PROFILE_LABEL: PROFILE_LABEL[profile],
-    SPEC_VERSION: '2.1',
+    SPEC_VERSION: '2.2',
     DATE: date,
     DATETIME: `${date} 10:00`,
     ONE_LINE_DESC: '用于自测的示例工作区。',
@@ -89,19 +89,12 @@ function assemble(profile, dir, facts = {}) {
     ACCESS_POINTER: '凭据见密码管理器条目 demo',
     CHANGE_WINDOW: '任意时间（自测）',
     OPS_ROUTINES: '- 重启: 见 docs/RUNBOOK.md',
-    SCOPE: '记忆体系与 DSH 使用',
-    NON_GOALS: '不做产品级实现。',
     FOCUS: '自测',
     CURRENT_STATE: '刚初始化记忆体系，尚未开始实质工作。',
     FILE_LIST: 'AGENTS.md、docs/PROGRESS.md 等',
     NEXT_STEPS: '- [ ] （待补充：第一个具体任务）',
-    EXTRA_DECISION: profile === 'ops' ? '、RUNBOOK.md' : profile === 'knowledge' ? '、NOTES.md' : '',
-    EXTRA_POINTERS:
-      profile === 'ops'
-        ? '- 运维步骤 → docs/RUNBOOK.md（操作前先看）'
-        : profile === 'knowledge'
-          ? '- 知识笔记 → docs/NOTES.md（附来源与日期）'
-          : '',
+    EXTRA_DECISION: profile === 'ops' ? '、RUNBOOK.md' : '',
+    EXTRA_POINTERS: profile === 'ops' ? '- 运维步骤 → docs/RUNBOOK.md（操作前先看）' : '',
     TOPIC: '示例主题',
     CONCLUSION: '示例结论',
     SOURCE: '自测',
@@ -123,7 +116,6 @@ function assemble(profile, dir, facts = {}) {
   writeFileSync(join(dir, 'docs', 'DECISIONS.md'), fill(tpl('DECISIONS.md'), baseFacts));
 
   if (profile === 'ops') writeFileSync(join(dir, 'docs', 'RUNBOOK.md'), fill(tpl('RUNBOOK.md'), baseFacts));
-  if (profile === 'knowledge') writeFileSync(join(dir, 'docs', 'NOTES.md'), fill(tpl('NOTES.md'), baseFacts));
 
   const leftovers = agents.match(/\{\{[^}]+\}\}/g);
   assert(leftovers === null, `AGENTS.md 仍有模板标记: ${leftovers?.join(', ')}`);
@@ -169,8 +161,11 @@ check('SKILL.md frontmatter 合法且描述在 500 字符内', () => {
   assert(flatten.length <= 500, `description ${flatten.length} 字符，会被目录截断`);
 });
 
-check('三类模板齐全且保护节原文一致', () => {
-  for (const p of ['dev', 'ops', 'knowledge']) {
+check('开发/运维模板齐全，且知识类模板已移除', () => {
+  for (const gone of ['AGENTS.knowledge.md', 'TRIGGER.knowledge.md', 'NOTES.md']) {
+    assert(!existsSync(join(TEMPLATES, gone)), `知识类模板应已删除: ${gone}`);
+  }
+  for (const p of ['dev', 'ops']) {
     assert(existsSync(join(TEMPLATES, `AGENTS.${p}.md`)), `缺 AGENTS.${p}.md`);
     assert(existsSync(join(TEMPLATES, `TRIGGER.${p}.md`)), `缺 TRIGGER.${p}.md`);
     const trigger = tpl(`TRIGGER.${p}.md`);
@@ -178,7 +173,6 @@ check('三类模板齐全且保护节原文一致', () => {
     assert(/## 进度衔接（必须保留本节原文）/.test(tpl('AGENTS.base.md')), 'base 缺进度衔接节');
   }
   assert(tpl('RUNBOOK.md').includes('## 变更与回滚'), 'RUNBOOK 缺回滚节');
-  assert(tpl('NOTES.md').includes('## 主题索引'), 'NOTES 缺主题索引');
 });
 
 check('目录与文档存在', () => {
@@ -212,8 +206,15 @@ check('SKILL.md 包含 opt-out 与默认工作区规则', () => {
   assert(text.includes('记忆: 关闭'), '缺 AGENTS 记忆关闭规则');
 });
 
+check('SKILL.md 声明知识类目录不初始化', () => {
+  const text = readFileSync(join(ROOT, 'SKILL.md'), 'utf8');
+  assert(text.includes('知识/学习类目录') || text.includes('知识类目录'), '缺知识类不初始化说明');
+  assert(!text.includes('AGENTS.knowledge.md'), '仍引用已删除的知识模板');
+  assert(!text.includes('TRIGGER.knowledge.md'), '仍引用已删除的知识触发器模板');
+});
+
 process.stdout.write('\n[2] 生成 + 校验（三类工作区）\n');
-for (const profile of ['dev', 'ops', 'knowledge']) {
+for (const profile of ['dev', 'ops']) {
   check(`${profile} 工作区生成后校验通过`, () => {
     withTemp((dir) => {
       const agents = assemble(profile, dir);
@@ -223,7 +224,6 @@ for (const profile of ['dev', 'ops', 'knowledge']) {
       assertEqual(result.json.profile, profile, '类型识别错误');
       const required = ['AGENTS.md', 'docs/PROGRESS.md', 'docs/KNOWN-ISSUES.md', 'docs/DECISIONS.md'];
       if (profile === 'ops') required.push('docs/RUNBOOK.md');
-      if (profile === 'knowledge') required.push('docs/NOTES.md');
       for (const rel of required) assert(existsSync(join(dir, rel)), `缺 ${rel}`);
       const lines = agents.split(/\r?\n/).length;
       assert(lines <= 60, `AGENTS.md ${lines} 行，超过 60 行预算`);
@@ -273,6 +273,45 @@ check('明文凭据 → ERROR', () => {
     const result = runVerify(dir);
     assertEqual(result.status, 1, '应校验失败');
     assert(result.json.errors.some((e) => e.includes('凭据')), '应报告疑似凭据');
+  });
+});
+
+check('知识类目录 → 跳过且 exit 0（不报缺少文件）', () => {
+  withTemp((dir) => {
+    mkdirSync(join(dir, 'notes'), { recursive: true });
+    writeFileSync(join(dir, 'README.md'), '# 学习笔记\n');
+    writeFileSync(join(dir, 'notes', 'topic.md'), '# 主题\n');
+    const result = runVerify(dir);
+    assertEqual(result.status, 0, '知识目录不应失败');
+    assertEqual(result.json.skipped, true, '应标记 skipped');
+    assertEqual(result.json.reason, 'knowledge workspace is out of scope', 'reason 应为知识类');
+  });
+});
+
+check('未初始化且无信号 → 跳过', () => {
+  withTemp((dir) => {
+    const result = runVerify(dir);
+    assertEqual(result.status, 0, '空目录不应失败');
+    assertEqual(result.json.skipped, true, '应标记 skipped');
+  });
+});
+
+check('有开发信号但缺文件 → 仍然 ERROR', () => {
+  withTemp((dir) => {
+    writeFileSync(join(dir, 'package.json'), '{"name":"x"}');
+    const result = runVerify(dir);
+    assertEqual(result.status, 1, '开发项目缺记忆文件应报错');
+    assert(result.json.errors.length > 0, '应有 ERROR');
+  });
+});
+
+check('opt-out 标记 → 跳过且 exit 0', () => {
+  withTemp((dir) => {
+    mkdirSync(join(dir, '.dsh'), { recursive: true });
+    writeFileSync(join(dir, '.dsh', 'no-project-memory'), '');
+    const result = runVerify(dir);
+    assertEqual(result.status, 0, 'opt-out 不应失败');
+    assertEqual(result.json.skipped, true, '应标记 skipped');
   });
 });
 
@@ -345,11 +384,12 @@ check('install.mjs 安装/重复安装/覆盖', () => {
 });
 
 process.stdout.write('\n[5] 规范文档自洽\n');
-check('SPEC 收录三类保护节原文', () => {
+check('SPEC 为 v2.2 且只收录 dev/ops 保护节', () => {
   const spec = readFileSync(join(ROOT, 'reference', 'SPEC.zh.md'), 'utf8');
-  assert((spec.match(/## 进度衔接（必须保留本节原文）/g) ?? []).length >= 3, '进度衔接原文至少 3 份');
-  assert((spec.match(/## 自维护触发器（必须保留本节原文）/g) ?? []).length >= 3, '触发器原文至少 3 份');
-  assert(spec.includes('RUNBOOK.md') && spec.includes('NOTES.md'), '规范应覆盖两类新文件');
+  assert(spec.startsWith('# 工作区文件记忆规范 v2.2'), '版本应为 v2.2');
+  assert((spec.match(/^## 进度衔接（必须保留本节原文）/gm) ?? []).length === 3, '进度衔接原文应为 3 份（结构示例 + dev + ops）');
+  assert((spec.match(/^## 自维护触发器（必须保留本节原文）/gm) ?? []).length === 3, '触发器原文应为 3 份（结构示例 + dev + ops）');
+  assert(spec.includes('知识/学习类目录：不初始化'), '缺知识类不初始化的设计决策节');
 });
 
 process.stdout.write('\n[6] bundle 插件 provider\n');

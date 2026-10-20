@@ -1,12 +1,12 @@
 # project-memory-init
 
 给 DSH 用的「工作区文件记忆体系」初始化技能：说一句 **「初始化项目」**，就能在一个新目录里生成
-`AGENTS.md` + `docs/PROGRESS.md` / `KNOWN-ISSUES.md` / `DECISIONS.md`，并按工作区类型追加
-`RUNBOOK.md`（运维）或 `NOTES.md`（知识学习）。
+`AGENTS.md` + `docs/PROGRESS.md` / `KNOWN-ISSUES.md` / `DECISIONS.md`，运维工作区再追加
+`RUNBOOK.md`。
 
 - 纯 Markdown + 零依赖 Node 校验脚本；不建数据库、不装包、不联网。
 - 目标：**换电脑 / 换目录，一句话恢复同一套工作记忆规范。**
-- 规范：`reference/SPEC.zh.md`（v2.1）；同类项目对比：`reference/RESEARCH-2026-10.zh.md`。
+- 规范：`reference/SPEC.zh.md`（v2.2）；同类项目对比：`reference/RESEARCH-2026-10.zh.md`。
 - 三种安装形态：**bundle 插件（UI 粘贴 URL 一键装）**、纯技能目录、首次引导提示词。
 
 ---
@@ -82,7 +82,7 @@ node scripts/install.mjs --force         # 覆盖
 技能会：
 
 1. 侦察目录（`package.json` / `pyproject.toml` / `docker-compose.yml` / 已有文档……）；
-2. 判定类型（开发 / 运维 / 知识），能从文件推断的不问；
+2. 判定类型（开发 / 运维），能从文件推断的不问；知识类目录会直接说明「不初始化」；
 3. 生成 `AGENTS.md` 与对应 `docs/` 文件，未知项标 `（待补充）`，不编造；
 4. 跑 `scripts/verify-memory.mjs` 自检（保护节、占位符、密钥、行数、私有层 gitignore）；
 5. 汇报文件清单与待补项，并明确说明：**这是骨架，AGENTS.md 需要人工审阅定稿**。
@@ -93,24 +93,26 @@ node scripts/install.mjs --force         # 覆盖
 |---|---|
 | `初始化项目` | 自动判定类型并生成 |
 | `初始化一个运维工作区` | 强制 `ops`，生成 `RUNBOOK.md` |
-| `初始化学习工作区` | 强制 `knowledge`，生成 `NOTES.md` |
 | `升级记忆规范` | 对已有项目补缺节/补文件，不覆盖旧内容 |
 | `配置本机` / `本机私有配置` | 生成 `AGENTS.local.md`（不提交，不写密钥） |
 | `初始化全局偏好` | 生成 `~/.dsh/AGENTS.md`（≤20 行，先确认） |
 
 ---
 
-## 三类工作区
+## 两类工作区
 
 | 类型 | 用来做什么 | AGENTS.md 专属节 | 额外文件 |
 |---|---|---|---|
 | `dev` | 自己开发的项目 | 定位与边界 / 技术栈 / 常用命令 / 项目结构 | — |
 | `ops` | 服务器、服务、部署的日常运维 | 管理对象 / 环境与访问 / 危险操作红线 / 常用操作 | `docs/RUNBOOK.md` |
-| `knowledge` | 杂项知识提问、调研、学习 | 学习范围 / 知识约定 / 当前关注 | `docs/NOTES.md` |
+| `dev` + 部署信号 | 有代码也有部署 | 同 `dev` | `docs/RUNBOOK.md` |
+
+知识/学习类目录**不初始化**（见上方说明与 SPEC §8）。
 
 核心约定（详见 `reference/SPEC.zh.md`）：
 
 - `AGENTS.md` ≤ 60 行；只放恒真、不可推导的事实；进度/坑/决策/步骤各归其文档。
+- 只有 `dev` / `ops` 两类；知识目录不建记忆体系。
 - 两个「必须保留本节原文」的保护节（进度衔接、自维护触发器）不可改写。
 - 每次收尾更新 `PROGRESS.md`；踩坑记 `KNOWN-ISSUES.md`；定案记 `DECISIONS.md`。
 - 不写明文密钥；只写「去哪找」；本机差异进 `AGENTS.local.md` / `docs/local/` 且 gitignore。
@@ -182,5 +184,6 @@ project-memory-init/
 
 ## 版本
 
+v2.2（2026-10-20）：移除知识类工作区（不再生成 `NOTES.md` / 知识型 AGENTS），知识目录改为「不初始化」；校验器支持 opt-out 跳过；规范升到 2.2。
 v2.1（2026-10-19）：定位与边界、本机私有覆盖层、任务形状读取、跨工具/嵌套 AGENTS、证据平衡、临时工作区 opt-out、bundle 插件安装。
-v2.0：三类工作区、RUNBOOK/NOTES、边界与红线、按类型触发器、拒绝写入清单、复验/归档、跨机器安装。
+v2.0：开发/运维/知识三类工作区、RUNBOOK/NOTES、边界与红线、按类型触发器、拒绝写入清单、复验/归档、跨机器安装。

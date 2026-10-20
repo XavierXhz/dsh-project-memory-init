@@ -3,7 +3,7 @@
  * verify-memory.mjs — 只读校验工作区的文件记忆体系。
  *
  * 用法:
- *   node verify-memory.mjs [工作区目录] [--profile=dev|ops|knowledge] [--json]
+ *   node verify-memory.mjs [工作区目录] [--profile=dev|ops] [--json]
  *
  * 退出码: 0 = 无 ERROR（可有 WARN）；1 = 有 ERROR；2 = 用法/读取错误。
  * 依赖: Node.js 内置模块，无网络、无写入。
@@ -16,8 +16,8 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_DIR = join(SCRIPT_DIR, '..', 'templates');
 
-const PROFILE_LABELS = { dev: '开发', ops: '运维', knowledge: '知识' };
-const SPEC_VERSION = '2.1';
+const PROFILE_LABELS = { dev: '开发', ops: '运维' };
+const SPEC_VERSION = '2.2';
 const AGENTS_REQUIRED = ['工作约定', '边界与红线', '记忆文件'];
 const PROTECTED = [
   '进度衔接（必须保留本节原文）',
@@ -26,7 +26,6 @@ const PROTECTED = [
 const PROFILE_AGENTS_SECTIONS = {
   dev: ['定位与边界', '技术栈', '常用命令', '项目结构'],
   ops: ['管理对象', '环境与访问', '危险操作红线', '常用操作'],
-  knowledge: ['学习范围', '知识约定', '当前关注'],
 };
 const CORE_DOCS = ['PROGRESS.md', 'KNOWN-ISSUES.md', 'DECISIONS.md'];
 const DOC_HEADINGS = {
@@ -34,7 +33,6 @@ const DOC_HEADINGS = {
   'KNOWN-ISSUES.md': ['坑列表（新坑放最上）', '已修复'],
   'DECISIONS.md': ['决策列表（新决策放最上）'],
   'RUNBOOK.md': ['管理对象', '日常操作', '故障排查', '备份与恢复', '变更与回滚'],
-  'NOTES.md': ['主题索引', '笔记（新笔记放最上）'],
 };
 const LINE_BUDGET = {
   'AGENTS.md': 60,
@@ -42,7 +40,6 @@ const LINE_BUDGET = {
   'docs/KNOWN-ISSUES.md': 120,
   'docs/DECISIONS.md': 300,
   'docs/RUNBOOK.md': 300,
-  'docs/NOTES.md': 300,
 };
 const SECRET_PATTERNS = [
   { re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/, name: '私钥块' },
@@ -72,7 +69,7 @@ function findCredentialValue(text) {
 function usage(msg) {
   if (msg) process.stderr.write(`错误: ${msg}\n\n`);
   process.stderr.write(
-    '用法: node verify-memory.mjs [工作区目录] [--profile=dev|ops|knowledge] [--json]\n',
+    '用法: node verify-memory.mjs [工作区目录] [--profile=dev|ops] [--json]\n',
   );
   process.exit(2);
 }
@@ -108,12 +105,16 @@ function detectProfile(root, agentsText) {
   const header = agentsText?.match(/^>\s*类型\s*[:：]\s*(\S+)/m)?.[1];
   if (header) {
     if (/运维|ops/i.test(header)) return 'ops';
-    if (/知识|学习|knowledge/i.test(header)) return 'knowledge';
     if (/开发|dev/i.test(header)) return 'dev';
   }
   if (existsSync(join(root, 'docs', 'RUNBOOK.md'))) return 'ops';
-  if (existsSync(join(root, 'docs', 'NOTES.md'))) return 'knowledge';
   return 'dev';
+}
+
+/** 工作区是否被显式标记为「不初始化记忆」。 */
+function isOptedOut(root, agentsText) {
+  if (existsSync(join(root, '.dsh', 'no-project-memory'))) return true;
+  return agentsText !== null && /^>\s*记忆\s*[:：]\s*关闭/m.test(agentsText);
 }
 
 /** 去掉注释、代码块、行内代码，避免占位符/密钥误报。 */
@@ -122,6 +123,7 @@ function stripNoise(text) {
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/```[\s\S]*?```/g, '')
     .replace(/~~~[\s\S]*?~~~/g, '')
+    .replace(/``[^`\n]*``/g, '')
     .replace(/`[^`\n]*`/g, '');
 }
 
@@ -282,6 +284,33 @@ function checkLocalOverlay(root, warnings, errors) {
   }
 }
 
+/** 目录里是否存在开发/运维强信号。 */
+function hasProjectSignals(root) {
+  const manifests = ['package.json', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'pom.xml', 'composer.json', 'Gemfile', 'src'];
+  if (manifests.some((name) => existsSync(join(root, name)))) return true;
+  if (existsSync(join(root, 'docker-compose.yml')) || existsSync(join(root, 'docker-compose.yaml'))) return true;
+  let entries = [];
+  try {
+    entries = readdirSync(root);
+  } catch {
+    return false;
+  }
+  return entries.some((name) => /\.(csproj|tf)$/.test(name) || name === 'ansible.cfg' || name.startsWith('inventory'));
+}
+
+/** 目录看起来像知识/学习资料（只有文档类文件）。 */
+function looksLikeKnowledge(root) {
+  let entries = [];
+  try {
+    entries = readdirSync(root);
+  } catch {
+    return false;
+  }
+  const docLike = entries.filter((name) => !name.startsWith('.'));
+  if (docLike.length === 0) return false;
+  return docLike.every((name) => /\.(md|markdown|txt|pdf|html?)$/i.test(name) || ['notes', 'docs', '资料', 'learning'].includes(name));
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const root = args.dir;
@@ -291,6 +320,48 @@ function main() {
   const warnings = [];
   const stats = {};
   const agentsText = readText(root, 'AGENTS.md');
+
+  if (isOptedOut(root, agentsText)) {
+    const payload = {
+      ok: true,
+      skipped: true,
+      reason: 'workspace is marked no-project-memory',
+      dir: root,
+      errors: [],
+      warnings: [],
+      todos: { count: 0, items: [] },
+      stats: {},
+    };
+    process.stdout.write(
+      args.json
+        ? `${JSON.stringify(payload, null, 2)}\n`
+        : `记忆体系校验: ${root}\n结果: 跳过（该工作区已标记不初始化记忆）\n`,
+    );
+    return;
+  }
+
+  if (agentsText === null && !hasProjectSignals(root)) {
+    const knowledge = looksLikeKnowledge(root);
+    const payload = {
+      ok: true,
+      skipped: true,
+      reason: knowledge ? 'knowledge workspace is out of scope' : 'workspace is not initialized',
+      dir: root,
+      errors: [],
+      warnings: [],
+      todos: { count: 0, items: [] },
+      stats: {},
+    };
+    process.stdout.write(
+      args.json
+        ? `${JSON.stringify(payload, null, 2)}\n`
+        : knowledge
+          ? `记忆体系校验: ${root}\n结果: 跳过（看起来是知识/学习类目录，本规范不适用；见 SPEC §8）\n`
+          : `记忆体系校验: ${root}\n结果: 跳过（尚未初始化记忆，也没有开发/运维信号）\n`,
+    );
+    return;
+  }
+
   const profile = args.profile ?? detectProfile(root, agentsText);
 
   if (agentsText === null) {
@@ -313,10 +384,9 @@ function main() {
 
   const requiredDocs = [...CORE_DOCS];
   if (profile === 'ops') requiredDocs.push('RUNBOOK.md');
-  if (profile === 'knowledge') requiredDocs.push('NOTES.md');
   const memoryFiles = ['AGENTS.md'];
 
-  for (const docName of [...CORE_DOCS, 'RUNBOOK.md', 'NOTES.md']) {
+  for (const docName of [...CORE_DOCS, 'RUNBOOK.md']) {
     const relPath = `docs/${docName}`;
     const text = readText(root, relPath);
     if (text === null) {
