@@ -17,7 +17,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_DIR = join(SCRIPT_DIR, '..', 'templates');
 
 const PROFILE_LABELS = { dev: '开发', ops: '运维' };
-const SPEC_VERSION = '2.2';
+const SPEC_VERSION = '2.3';
 const AGENTS_REQUIRED = ['工作约定', '边界与红线', '记忆文件'];
 const PROTECTED = [
   '进度衔接（必须保留本节原文）',

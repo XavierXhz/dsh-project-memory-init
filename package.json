@@ -1,6 +1,6 @@
 {
   "name": "dsh-project-memory-init",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "DSH bundle plugin: one-phrase project memory init (AGENTS.md + docs) for dev and ops workspaces",
   "type": "module",
   "main": "lib/index.js",

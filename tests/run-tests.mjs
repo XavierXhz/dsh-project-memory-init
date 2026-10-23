@@ -70,7 +70,7 @@ function assemble(profile, dir, facts = {}) {
   const baseFacts = {
     PROJECT_NAME: 'demo-project',
     PROFILE_LABEL: PROFILE_LABEL[profile],
-    SPEC_VERSION: '2.2',
+    SPEC_VERSION: '2.3',
     DATE: date,
     DATETIME: `${date} 10:00`,
     ONE_LINE_DESC: '用于自测的示例工作区。',
@@ -204,6 +204,19 @@ check('SKILL.md 包含 opt-out 与默认工作区规则', () => {
   const text = readFileSync(join(ROOT, 'SKILL.md'), 'utf8');
   assert(text.includes('.dsh/no-project-memory'), '缺 opt-out marker 规则');
   assert(text.includes('记忆: 关闭'), '缺 AGENTS 记忆关闭规则');
+});
+
+check('AGENTS 模板含三条通用规则', () => {
+  const base = readFileSync(join(TEMPLATES, 'AGENTS.base.md'), 'utf8');
+  assert(base.includes('删除/移动文档或代码前先 grep 引用'), '缺 grep 引用规则');
+  assert(base.includes('同一主题只保留一个活跃载体'), '缺单一活跃载体规则');
+  assert(base.includes('推送公开仓库前'), '缺公开仓库检查规则');
+});
+
+check('SKILL.md 声明不动用户既有文档', () => {
+  const text = readFileSync(join(ROOT, 'SKILL.md'), 'utf8');
+  assert(text.includes('不动用户既有文档'), '缺既有文档保护边界');
+  assert(text.includes('不要删、不要移动'), '缺业务文档处理指引');
 });
 
 check('SKILL.md 声明知识类目录不初始化', () => {
@@ -384,12 +397,14 @@ check('install.mjs 安装/重复安装/覆盖', () => {
 });
 
 process.stdout.write('\n[5] 规范文档自洽\n');
-check('SPEC 为 v2.2 且只收录 dev/ops 保护节', () => {
+check('SPEC 为 v2.3 且收录文档生命周期/脚手架坑', () => {
   const spec = readFileSync(join(ROOT, 'reference', 'SPEC.zh.md'), 'utf8');
-  assert(spec.startsWith('# 工作区文件记忆规范 v2.2'), '版本应为 v2.2');
+  assert(spec.startsWith('# 工作区文件记忆规范 v2.3'), '版本应为 v2.3');
   assert((spec.match(/^## 进度衔接（必须保留本节原文）/gm) ?? []).length === 3, '进度衔接原文应为 3 份（结构示例 + dev + ops）');
   assert((spec.match(/^## 自维护触发器（必须保留本节原文）/gm) ?? []).length === 3, '触发器原文应为 3 份（结构示例 + dev + ops）');
   assert(spec.includes('知识/学习类目录：不初始化'), '缺知识类不初始化的设计决策节');
+  assert(spec.includes('### 9.12 文档生命周期'), '缺文档生命周期节');
+  assert(spec.includes('### 9.13 脚手架/生成器自身的坑'), '缺脚手架坑节');
 });
 
 process.stdout.write('\n[6] bundle 插件 provider\n');
